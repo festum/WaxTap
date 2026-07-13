@@ -1,0 +1,50 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # Every hour at :05 — offset to avoid GitHub's top-of-hour congestion
+    - cron: "5 * * * *"
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/ColeSpringer/WaxTap.git || true
+          git fetch upstream
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          FORK_SHA=$(git rev-parse origin/main)
+          echo "upstream=$UPSTREAM_SHA"
+          echo "fork=$FORK_SHA"
+          if [ "$UPSTREAM_SHA" = "$FORK_SHA" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync if behind
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          git merge upstream/main --ff-only \
+            || git rebase upstream/main
+          git push origin main
