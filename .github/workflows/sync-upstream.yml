@@ -3,7 +3,7 @@ name: Sync upstream
 on:
   schedule:
     # Every hour at :05 — offset to avoid GitHub's top-of-hour congestion
-    - cron: "5 * * * *"
+    - cron: "0 6 * * 1"   # every Monday 06:00 UTC
   workflow_dispatch: # allow manual trigger
 
 jobs:
